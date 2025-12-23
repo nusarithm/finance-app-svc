@@ -1,0 +1,49 @@
+name: Deploy to Homelab
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    name: Deploy on self-hosted runner
+    runs-on: [self-hosted]
+    # Map required repository secrets into the job environment
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      ALGORITHM: ${{ secrets.ALGORITHM }}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+      ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+      UVICORN_WORKERS: ${{ secrets.UVICORN_WORKERS }}
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          required=(SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SECRET_KEY)
+          missing=0
+          for var in "${required[@]}"; do
+            if [ -z "${!var}" ]; then
+              echo "ERROR: $var is not set"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then exit 1; fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prune old images (optional)
+        run: docker image prune -f || true
+
+      - name: Build and start services
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          docker compose pull || true
+          docker compose up -d --build --remove-orphans
+
+      - name: Prune unused resources (optional)
+        run: docker system prune -f || true

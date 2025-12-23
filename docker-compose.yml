@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      target: final
+    image: finance-app-svc:latest
+    # Optional env_file for local dev (do not commit .env containing secrets)
+    # env_file: .env
+    environment:
+      # Connection & secret settings (provided via environment or .env for local)
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_PROJECT_ID: ${SUPABASE_PROJECT_ID}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      ZAI_API_KEY: ${ZAI_API_KEY}
+      # Runtime tuning
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+    ports:
+      - "1234:1234"
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:1234/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

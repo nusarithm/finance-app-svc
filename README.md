@@ -199,6 +199,50 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 4. Set up proper logging
 5. Use environment-specific configurations
 
+## 🐳 Docker / Homelab Deployment
+
+We provide a small, multi-stage Dockerfile plus a `docker-compose.yml` to run the app on your homelab.
+
+Quick start (on your homelab or self-hosted runner):
+
+```bash
+# Build and run with compose
+docker compose up -d --build
+
+# Check logs
+docker compose logs -f
+
+# Stop
+docker compose down
+```
+
+Notes:
+- The app listens on container port `1234` and the compose file maps it to the same host port.
+- Persistent uploads are stored in `./uploads` on the host and mounted into the container.
+- The provided GitHub Actions workflow (`.github/workflows/deploy.yml`) will run on a `self-hosted` runner in your homelab and execute the same `docker compose up -d --build` on push to `main`.
+- Ensure your self-hosted runner has Docker and Docker Compose installed and the runner user has permission to run Docker commands.
+
+### Using Repository Secrets for Deployments
+
+For automatic deployments we expect the following **Repository Secrets** to be set in GitHub (Settings → Secrets):
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_PROJECT_ID`
+- `SECRET_KEY`
+- `ALGORITHM` (optional, defaults to HS256)
+- `ACCESS_TOKEN_EXPIRE_MINUTES` (optional, defaults to 30)
+- `ZAI_API_KEY`
+- `UVICORN_WORKERS` (optional)
+
+The workflow will map these secrets into the runner's environment and will fail early if critical secrets are missing.
+
+Performance and image size tips:
+- We use a multi-stage build that builds wheels in a builder stage and only installs runtime wheels in the final image to keep the final image smaller.
+- Tune `UVICORN_WORKERS` (env var / compose file) according to your CPU count for best throughput.
+- Use the `docker system prune -f` occasionally on the host to reclaim disk space.
+
+
 ## 📖 API Documentation
 
 Kunjungi `/docs` untuk interactive API documentation dengan Swagger UI, atau `/redoc` untuk alternative documentation.
