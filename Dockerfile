@@ -9,8 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 # Install build deps required for some Python wheels (we'll keep them out of final image)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       build-essential gcc git curl ca-certificates pkg-config \
-       libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 ffmpeg \
+         build-essential gcc git curl ca-certificates pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /wheels
@@ -24,11 +23,11 @@ RUN pip install --upgrade pip setuptools wheel \
 FROM python:3.11-slim AS final
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
-# Runtime deps for OpenCV / easyocr etc (small list)
+# Minimal runtime deps
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 ffmpeg ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+     && apt-get install -y --no-install-recommends \
+         ca-certificates curl \
+     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheels and install - this avoids building packages inside final image
 COPY --from=builder /wheels /wheels

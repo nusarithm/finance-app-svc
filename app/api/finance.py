@@ -90,3 +90,16 @@ async def get_summary(current_user: UserResponse = Depends(get_current_user)):
         return {"success": True, "data": summary}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/analytics", response_model=Dict[str, Any])
+async def get_analytics(
+    period: str = Query("month", description="Period: week, month, year"),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get analytics data for charts and insights"""
+    try:
+        analytics = await finance_service.get_analytics(current_user.id, period)
+        return {"success": True, "data": analytics}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
