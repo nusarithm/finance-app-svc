@@ -1,4 +1,4 @@
-name: Deploy to Homelab
+name: Deploy to Render
 
 on:
   push:
@@ -6,23 +6,20 @@ on:
 
 jobs:
   deploy:
-    name: Deploy on self-hosted runner
-    runs-on: [self-hosted]
-    # Map required repository secrets into the job environment
+    name: Trigger Render Deploy
+    runs-on: ubuntu-latest
     env:
+      # Map critical repo secrets (set these in GitHub Secrets)
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      ALGORITHM: ${{ secrets.ALGORITHM }}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
-      ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
-      UVICORN_WORKERS: ${{ secrets.UVICORN_WORKERS }}
 
     steps:
       - name: Validate required secrets
         run: |
-          required=(SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SECRET_KEY)
+          required=(RENDER_API_KEY RENDER_SERVICE_ID SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SECRET_KEY)
           missing=0
           for var in "${required[@]}"; do
             if [ -z "${!var}" ]; then
@@ -32,18 +29,18 @@ jobs:
           done
           if [ "$missing" -eq 1 ]; then exit 1; fi
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Prune old images (optional)
-        run: docker image prune -f || true
-
-      - name: Build and start services
-        env:
-          DOCKER_BUILDKIT: 1
+      - name: Trigger deploy via Render API
+        id: render_deploy
         run: |
-          docker compose pull || true
-          docker compose up -d --build --remove-orphans
+          set -e
+          echo "Triggering deploy for Render service $RENDER_SERVICE_ID"
+          resp=$(curl -s -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache":true}')
+          echo "Render response: $resp"
+          echo "response=$resp" >> $GITHUB_OUTPUT
 
-      - name: Prune unused resources (optional)
-        run: docker system prune -f || true
+      - name: Show deploy status (optional)
+        run: |
+          echo "You can monitor the deployment in the Render dashboard: https://dashboard.render.com/services/$RENDER_SERVICE_ID"
